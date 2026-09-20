@@ -2,15 +2,16 @@
 
 ## What this project is about
 
-QueryLab is a small, educational database engine for learning **how query
-optimization works**. It is not intended to replace SQLite, PostgreSQL, or
-another production database. Instead, it makes the optimizer's decisions
-visible and keeps the Python implementations of scans, joins, sorting, and
-buffer management easy to read.
+QueryLab is a query optimization and plan-evaluation engine that makes physical
+planning decisions measurable. It models the core path from SQL parsing and
+catalog statistics through plan generation, I/O cost estimation, paged
+execution, and result analysis. Its implementations of scans, joins, sorting,
+indexes, and buffer management are kept explicit so each plan can be inspected
+from estimate through execution.
 
-QueryLab generates sample `customers`, `orders`, and `products` tables, stores
-their rows in simulated pages, and gathers catalog statistics. For each
-supported SQL query, it:
+QueryLab generates `customers`, `orders`, and `products` tables, stores their
+rows in simulated pages, and gathers catalog statistics. For each supported SQL
+query, it:
 
 1. creates alternative access paths, join orders, and join algorithms;
 2. estimates the page I/O cost of every candidate;
