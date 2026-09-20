@@ -1,11 +1,30 @@
 # QueryLab
 
-QueryLab is an educational query optimizer and evaluator simulator written in
-readable Python. It estimates the page I/O cost of alternative query plans,
-executes those plans against simulated paged storage, and compares the
-optimizer's estimates with the work that actually occurred.
+## What this project is about
 
-The project is designed to answer three questions:
+QueryLab is a small, educational database engine for learning **how query
+optimization works**. It is not intended to replace SQLite, PostgreSQL, or
+another production database. Instead, it makes the optimizer's decisions
+visible and keeps the Python implementations of scans, joins, sorting, and
+buffer management easy to read.
+
+QueryLab generates sample `customers`, `orders`, and `products` tables, stores
+their rows in simulated pages, and gathers catalog statistics. For each
+supported SQL query, it:
+
+1. creates alternative access paths, join orders, and join algorithms;
+2. estimates the page I/O cost of every candidate;
+3. chooses the plan with the lowest estimated I/O;
+4. executes the candidates through an LRU buffer pool;
+5. reports estimated versus actual rows and page I/O; and
+6. shows whether another plan was actually cheaper.
+
+This creates a hands-on environment for exploring why optimizers make mistakes:
+skewed data, correlated columns, stale statistics, limited memory, index
+clustering, table page layout, and buffer reuse can all make reality differ
+from a textbook estimate.
+
+The project is built around three questions:
 
 1. What did the optimizer expect each operator to do?
 2. How many rows and page I/O operations did execution actually produce?
