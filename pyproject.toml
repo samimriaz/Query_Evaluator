@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "querylab"
+version = "0.1.0"
+description = "A readable query optimizer and evaluator simulator"
+requires-python = ">=3.11"
+
+[project.scripts]
+querylab = "querylab.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["querylab*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
