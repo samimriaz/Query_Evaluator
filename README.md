@@ -37,6 +37,16 @@ best plan. Regret identifies estimation errors that lead to a worse plan.
 
 The complete design notes are in [query_evaluator.md](./query_evaluator.md).
 
+## Contents
+
+- [Cost model](#cost-model)
+- [Architecture](#architecture)
+- [Storage and generated data](#storage-and-generated-data)
+- [How candidate query plans differ](#how-candidate-query-plans-differ)
+- [Running QueryLab](#running-querylab)
+- [Evaluation results](#evaluation-results)
+- [Supported SQL](#supported-sql)
+
 ## Cost model
 
 QueryLab deliberately uses page I/O as its only optimization cost:
@@ -139,41 +149,100 @@ The CLI uses a smaller learning configuration by default: 100 customers, 2,000
 orders, and 50 products. This keeps exhaustive evaluation of intentionally bad
 nested-loop plans interactive.
 
-## Implemented algorithms
+## How candidate query plans differ
 
-The implementations favor named steps, ordinary loops, and short explanatory
-comments over compact or clever Python.
+Different plans return the same rows, but they can reach those rows in very
+different ways. QueryLab changes three independent parts of a plan:
 
-### Access paths
+1. **Access path:** how each table is read.
+2. **Join input order:** which input appears on the left and right.
+3. **Join algorithm:** how matching rows are found.
 
-- Sequential table scan
-- Equality index scan
-- Clustered index cost estimation
-- Unclustered index cost estimation
+The optimizer combines these choices, estimates each combination, and selects
+the complete plan with the lowest estimated I/O.
 
-### Join algorithms
+### 1. Access path
 
-- Tuple nested-loop join
-- Block nested-loop join
-- In-memory hash join
-- Partitioned Grace hash join when the build input does not fit
-- Sort-merge join with duplicate-key groups
+| Access path | What it does | I/O tradeoff |
+|---|---|---|
+| Sequential scan | Reads every data page and tests each row | Predictable; often best when much of the table is needed |
+| Clustered index scan | Traverses the index, then reads nearby matching data pages | Effective when matching rows occupy a small page range |
+| Unclustered index scan | Traverses the index, then follows row locations to data pages | Effective for very selective filters; scattered matches may cause many reads |
 
-### Sorting and result operators
+For the predicate `c.tier = 'gold'`, QueryLab compares:
 
-- External merge sort
-  - memory-sized run generation;
-  - temporary run writes;
-  - multiway merge passes.
-- Projection
-- Grouped `COUNT`, `SUM`, and `AVG`
+```text
+SeqScan(customers): read all customer pages, then apply the filter
 
-### Optimizer behavior
+IndexScan(customers.tier): find "gold" in the index, then fetch matching rows
+```
 
+An index is not automatically better. If the table occupies one page, a
+sequential scan costs one read while the index must read an index page and a
+data page.
+
+### 2. Join input order
+
+The same join can be written with either input first:
+
+```text
+HashJoin(SeqScan(customers), SeqScan(orders))
+
+HashJoin(SeqScan(orders), SeqScan(customers))
+```
+
+Input order matters most for nested-loop joins:
+
+```text
+NestedLoop(left, right)
+```
+
+The left side is the outer input. The right side may be revisited for every
+outer row or block. A small right input may remain cached, while repeatedly
+reading a large right input can be very expensive.
+
+For hash join, QueryLab builds the hash table from the smaller observed input.
+For sort-merge join, both inputs must be ordered by the join key.
+
+### 3. Join algorithm
+
+| Join algorithm | How it works | Main I/O behavior | Usually useful when |
+|---|---|---|---|
+| Hash join | Build a hash table from the smaller input, then probe it with the other input | No extra I/O if the build side fits; otherwise partitions are written and read | Equality joins with enough memory |
+| Block nested loop | Load a block of left pages and scan the right input once per block | Fewer right-side rescans than tuple nested loop | No useful index or hash strategy is available |
+| Tuple nested loop | Compare every left row with every right row | Can repeatedly read the right input | The outer input is tiny or the inner input stays cached |
+| Sort-merge join | Sort both inputs, then advance through matching key groups | Sorting may create temporary-page reads and writes | Inputs are already sorted or sorted output is useful |
+
+### Plan families checked by the main evaluation
+
+The main two-table evaluation checks these plan families with both left/right
+input orders where applicable:
+
+```text
+Aggregate(HashJoin(SeqScan(c), SeqScan(o)))
+Aggregate(HashJoin(IndexScan(c.tier), SeqScan(o)))
+
+Aggregate(BlockNestedLoop(SeqScan(c), SeqScan(o)))
+Aggregate(BlockNestedLoop(IndexScan(c.tier), SeqScan(o)))
+
+Aggregate(NestedLoop(SeqScan(c), SeqScan(o)))
+Aggregate(NestedLoop(IndexScan(c.tier), SeqScan(o)))
+
+Aggregate(SortMerge(SeqScan(c), SeqScan(o)))
+Aggregate(SortMerge(IndexScan(c.tier), SeqScan(o)))
+```
+
+Reversing the inputs produces the other eight candidates, for 16 total plans.
+The complete measured list appears in
+[Evaluation 1](#evaluation-1-default-exhaustive-two-table-query).
+
+### Other implemented operators and optimizer behavior
+
+- External merge sort with run generation, temporary writes, and multiway
+  merge passes
+- Projection and grouped `COUNT`, `SUM`, and `AVG`
 - Predicate pushdown
-- Sequential versus indexed access paths
 - Left-deep join-order enumeration
-- Join-algorithm enumeration
 - Histogram and uniformity-based selectivity estimates
 - Independence assumption for multiple predicates
 - Frozen statistics for stale-statistics experiments
