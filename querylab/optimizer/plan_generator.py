@@ -35,11 +35,16 @@ class PlanGenerator:
     def generate(self, query: Query) -> list[PlanNode]:
         candidates: list[PlanNode] = []
 
+        # Dimension 1: try every left-deep table order.
         for table_order in permutations(query.tables):
+            # Dimension 2: choose a sequential or usable index access path for
+            # each table in this order.
             access_options = [self._access_paths(query, table) for table in table_order]
 
             for access_nodes in product(*access_options):
                 join_count = max(0, len(access_nodes) - 1)
+
+                # Dimension 3: choose an algorithm independently at each join.
                 algorithm_choices = product(JOIN_OPERATIONS, repeat=join_count)
 
                 for algorithms in algorithm_choices:
@@ -49,11 +54,14 @@ class PlanGenerator:
                         list(algorithms),
                     )
                     if root is None:
+                        # Skip orders such as customers -> products when no
+                        # predicate connects the intermediate result yet.
                         continue
                     root = self._add_result_operator(query, root)
                     self.estimator.estimate(root)
                     candidates.append(root)
 
+        # Estimated I/O chooses the plan. The stable ID makes ties repeatable.
         candidates.sort(key=lambda plan: (plan.estimated_io, plan.node_id))
         return candidates
 
@@ -63,6 +71,9 @@ class PlanGenerator:
             for predicate in query.predicates
             if predicate.column.table_alias in (None, table.alias)
         ]
+
+        # Every table can be read sequentially. Attaching its predicates here
+        # implements filter pushdown: rejected rows never reach a join.
         paths = [
             PlanNode(
                 node_id=self._next_id(),
@@ -74,6 +85,8 @@ class PlanGenerator:
         ]
 
         for predicate in predicates:
+            # This first version exposes index access only for equality
+            # predicates backed by a known index.
             if predicate.operator != "=":
                 continue
             if self.database.get_index(table.name, predicate.column.name) is None:
@@ -101,6 +114,8 @@ class PlanGenerator:
         root = access_nodes[0]
         joined_aliases = {root.table_alias}
 
+        # Add one table at a time to form a left-deep tree:
+        # Join(Join(first, second), third).
         for next_node, algorithm in zip(access_nodes[1:], algorithms):
             condition = self._find_join_condition(
                 query.joins,

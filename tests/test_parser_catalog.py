@@ -1,4 +1,7 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
 from querylab.catalog.catalog import Catalog
 from querylab.datagen.generate import DataConfig, generate_database
@@ -39,7 +42,24 @@ class ParserAndCatalogTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             catalog.analyze()
 
+    def test_catalog_snapshot_round_trip(self) -> None:
+        database = generate_database(
+            DataConfig(customer_rows=8, order_rows=24, product_rows=4)
+        )
+        catalog = Catalog(database)
+        catalog.analyze()
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            snapshot_path = Path(temporary_directory) / "catalog.json"
+            catalog.save(snapshot_path)
+            loaded = Catalog.load(database, snapshot_path)
+            document = json.loads(snapshot_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(loaded.table_stats, catalog.table_stats)
+        self.assertTrue(loaded.frozen)
+        self.assertEqual(document["schema_version"], 1)
+        self.assertIn("indexes", document["tables"]["customers"])
+
 
 if __name__ == "__main__":
     unittest.main()
-

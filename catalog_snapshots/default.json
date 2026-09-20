@@ -1,0 +1,900 @@
+{
+  "frozen": false,
+  "schema_version": 1,
+  "tables": {
+    "customers": {
+      "columns": {
+        "id": {
+          "distinct_count": 100,
+          "histogram": {
+            "buckets": [
+              {
+                "distinct_count": 10,
+                "lower": 1,
+                "row_count": 10,
+                "upper": 10
+              },
+              {
+                "distinct_count": 10,
+                "lower": 11,
+                "row_count": 10,
+                "upper": 20
+              },
+              {
+                "distinct_count": 10,
+                "lower": 21,
+                "row_count": 10,
+                "upper": 30
+              },
+              {
+                "distinct_count": 10,
+                "lower": 31,
+                "row_count": 10,
+                "upper": 40
+              },
+              {
+                "distinct_count": 10,
+                "lower": 41,
+                "row_count": 10,
+                "upper": 50
+              },
+              {
+                "distinct_count": 10,
+                "lower": 51,
+                "row_count": 10,
+                "upper": 60
+              },
+              {
+                "distinct_count": 10,
+                "lower": 61,
+                "row_count": 10,
+                "upper": 70
+              },
+              {
+                "distinct_count": 10,
+                "lower": 71,
+                "row_count": 10,
+                "upper": 80
+              },
+              {
+                "distinct_count": 10,
+                "lower": 81,
+                "row_count": 10,
+                "upper": 90
+              },
+              {
+                "distinct_count": 10,
+                "lower": 91,
+                "row_count": 10,
+                "upper": 100
+              }
+            ],
+            "total_rows": 100
+          },
+          "maximum": 100,
+          "minimum": 1
+        },
+        "region": {
+          "distinct_count": 4,
+          "histogram": {
+            "buckets": [
+              {
+                "distinct_count": 1,
+                "lower": "east",
+                "row_count": 10,
+                "upper": "east"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "east",
+                "row_count": 10,
+                "upper": "east"
+              },
+              {
+                "distinct_count": 2,
+                "lower": "east",
+                "row_count": 10,
+                "upper": "north"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "north",
+                "row_count": 10,
+                "upper": "north"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "north",
+                "row_count": 10,
+                "upper": "north"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "south",
+                "row_count": 10,
+                "upper": "south"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "south",
+                "row_count": 10,
+                "upper": "south"
+              },
+              {
+                "distinct_count": 2,
+                "lower": "south",
+                "row_count": 10,
+                "upper": "west"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "west",
+                "row_count": 10,
+                "upper": "west"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "west",
+                "row_count": 10,
+                "upper": "west"
+              }
+            ],
+            "total_rows": 100
+          },
+          "maximum": "west",
+          "minimum": "east"
+        },
+        "signup_year": {
+          "distinct_count": 12,
+          "histogram": {
+            "buckets": [
+              {
+                "distinct_count": 1,
+                "lower": 2015,
+                "row_count": 10,
+                "upper": 2015
+              },
+              {
+                "distinct_count": 2,
+                "lower": 2015,
+                "row_count": 10,
+                "upper": 2016
+              },
+              {
+                "distinct_count": 2,
+                "lower": 2017,
+                "row_count": 10,
+                "upper": 2018
+              },
+              {
+                "distinct_count": 2,
+                "lower": 2018,
+                "row_count": 10,
+                "upper": 2019
+              },
+              {
+                "distinct_count": 2,
+                "lower": 2019,
+                "row_count": 10,
+                "upper": 2020
+              },
+              {
+                "distinct_count": 2,
+                "lower": 2021,
+                "row_count": 10,
+                "upper": 2022
+              },
+              {
+                "distinct_count": 1,
+                "lower": 2023,
+                "row_count": 10,
+                "upper": 2023
+              },
+              {
+                "distinct_count": 1,
+                "lower": 2024,
+                "row_count": 10,
+                "upper": 2024
+              },
+              {
+                "distinct_count": 2,
+                "lower": 2024,
+                "row_count": 10,
+                "upper": 2025
+              },
+              {
+                "distinct_count": 2,
+                "lower": 2025,
+                "row_count": 10,
+                "upper": 2026
+              }
+            ],
+            "total_rows": 100
+          },
+          "maximum": 2026,
+          "minimum": 2015
+        },
+        "tier": {
+          "distinct_count": 3,
+          "histogram": {
+            "buckets": [
+              {
+                "distinct_count": 1,
+                "lower": "bronze",
+                "row_count": 10,
+                "upper": "bronze"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "bronze",
+                "row_count": 10,
+                "upper": "bronze"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "bronze",
+                "row_count": 10,
+                "upper": "bronze"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "bronze",
+                "row_count": 10,
+                "upper": "bronze"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "bronze",
+                "row_count": 10,
+                "upper": "bronze"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "bronze",
+                "row_count": 10,
+                "upper": "bronze"
+              },
+              {
+                "distinct_count": 2,
+                "lower": "bronze",
+                "row_count": 10,
+                "upper": "gold"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "gold",
+                "row_count": 10,
+                "upper": "gold"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "gold",
+                "row_count": 10,
+                "upper": "gold"
+              },
+              {
+                "distinct_count": 2,
+                "lower": "gold",
+                "row_count": 10,
+                "upper": "silver"
+              }
+            ],
+            "total_rows": 100
+          },
+          "maximum": "silver",
+          "minimum": "bronze"
+        }
+      },
+      "indexes": {
+        "id": {
+          "clustered": true,
+          "height": 1,
+          "name": "customers_id_idx"
+        },
+        "tier": {
+          "clustered": false,
+          "height": 1,
+          "name": "customers_tier_idx"
+        }
+      },
+      "page_count": 1,
+      "row_count": 100
+    },
+    "orders": {
+      "columns": {
+        "amount": {
+          "distinct_count": 1920,
+          "histogram": {
+            "buckets": [
+              {
+                "distinct_count": 190,
+                "lower": 3.25,
+                "row_count": 200,
+                "upper": 27.77
+              },
+              {
+                "distinct_count": 189,
+                "lower": 27.94,
+                "row_count": 200,
+                "upper": 40.5
+              },
+              {
+                "distinct_count": 190,
+                "lower": 40.65,
+                "row_count": 200,
+                "upper": 54.71
+              },
+              {
+                "distinct_count": 185,
+                "lower": 54.75,
+                "row_count": 200,
+                "upper": 70.11
+              },
+              {
+                "distinct_count": 185,
+                "lower": 70.14,
+                "row_count": 200,
+                "upper": 86.88
+              },
+              {
+                "distinct_count": 194,
+                "lower": 86.89,
+                "row_count": 200,
+                "upper": 110.61
+              },
+              {
+                "distinct_count": 193,
+                "lower": 110.64,
+                "row_count": 200,
+                "upper": 141.24
+              },
+              {
+                "distinct_count": 197,
+                "lower": 141.3,
+                "row_count": 200,
+                "upper": 186.11
+              },
+              {
+                "distinct_count": 198,
+                "lower": 186.54,
+                "row_count": 200,
+                "upper": 288.29
+              },
+              {
+                "distinct_count": 199,
+                "lower": 288.45,
+                "row_count": 200,
+                "upper": 3347.73
+              }
+            ],
+            "total_rows": 2000
+          },
+          "maximum": 3347.73,
+          "minimum": 3.25
+        },
+        "customer_id": {
+          "distinct_count": 100,
+          "histogram": {
+            "buckets": [
+              {
+                "distinct_count": 11,
+                "lower": 1,
+                "row_count": 200,
+                "upper": 11
+              },
+              {
+                "distinct_count": 10,
+                "lower": 11,
+                "row_count": 200,
+                "upper": 20
+              },
+              {
+                "distinct_count": 12,
+                "lower": 20,
+                "row_count": 200,
+                "upper": 31
+              },
+              {
+                "distinct_count": 11,
+                "lower": 31,
+                "row_count": 200,
+                "upper": 41
+              },
+              {
+                "distinct_count": 11,
+                "lower": 41,
+                "row_count": 200,
+                "upper": 51
+              },
+              {
+                "distinct_count": 11,
+                "lower": 52,
+                "row_count": 200,
+                "upper": 62
+              },
+              {
+                "distinct_count": 10,
+                "lower": 62,
+                "row_count": 200,
+                "upper": 71
+              },
+              {
+                "distinct_count": 11,
+                "lower": 71,
+                "row_count": 200,
+                "upper": 81
+              },
+              {
+                "distinct_count": 11,
+                "lower": 81,
+                "row_count": 200,
+                "upper": 91
+              },
+              {
+                "distinct_count": 10,
+                "lower": 91,
+                "row_count": 200,
+                "upper": 100
+              }
+            ],
+            "total_rows": 2000
+          },
+          "maximum": 100,
+          "minimum": 1
+        },
+        "id": {
+          "distinct_count": 2000,
+          "histogram": {
+            "buckets": [
+              {
+                "distinct_count": 200,
+                "lower": 1,
+                "row_count": 200,
+                "upper": 200
+              },
+              {
+                "distinct_count": 200,
+                "lower": 201,
+                "row_count": 200,
+                "upper": 400
+              },
+              {
+                "distinct_count": 200,
+                "lower": 401,
+                "row_count": 200,
+                "upper": 600
+              },
+              {
+                "distinct_count": 200,
+                "lower": 601,
+                "row_count": 200,
+                "upper": 800
+              },
+              {
+                "distinct_count": 200,
+                "lower": 801,
+                "row_count": 200,
+                "upper": 1000
+              },
+              {
+                "distinct_count": 200,
+                "lower": 1001,
+                "row_count": 200,
+                "upper": 1200
+              },
+              {
+                "distinct_count": 200,
+                "lower": 1201,
+                "row_count": 200,
+                "upper": 1400
+              },
+              {
+                "distinct_count": 200,
+                "lower": 1401,
+                "row_count": 200,
+                "upper": 1600
+              },
+              {
+                "distinct_count": 200,
+                "lower": 1601,
+                "row_count": 200,
+                "upper": 1800
+              },
+              {
+                "distinct_count": 200,
+                "lower": 1801,
+                "row_count": 200,
+                "upper": 2000
+              }
+            ],
+            "total_rows": 2000
+          },
+          "maximum": 2000,
+          "minimum": 1
+        },
+        "order_date": {
+          "distinct_count": 8,
+          "histogram": {
+            "buckets": [
+              {
+                "distinct_count": 1,
+                "lower": 2019,
+                "row_count": 200,
+                "upper": 2019
+              },
+              {
+                "distinct_count": 2,
+                "lower": 2019,
+                "row_count": 200,
+                "upper": 2020
+              },
+              {
+                "distinct_count": 2,
+                "lower": 2020,
+                "row_count": 200,
+                "upper": 2021
+              },
+              {
+                "distinct_count": 2,
+                "lower": 2021,
+                "row_count": 200,
+                "upper": 2022
+              },
+              {
+                "distinct_count": 2,
+                "lower": 2022,
+                "row_count": 200,
+                "upper": 2023
+              },
+              {
+                "distinct_count": 1,
+                "lower": 2023,
+                "row_count": 200,
+                "upper": 2023
+              },
+              {
+                "distinct_count": 2,
+                "lower": 2023,
+                "row_count": 200,
+                "upper": 2024
+              },
+              {
+                "distinct_count": 2,
+                "lower": 2024,
+                "row_count": 200,
+                "upper": 2025
+              },
+              {
+                "distinct_count": 2,
+                "lower": 2025,
+                "row_count": 200,
+                "upper": 2026
+              },
+              {
+                "distinct_count": 1,
+                "lower": 2026,
+                "row_count": 200,
+                "upper": 2026
+              }
+            ],
+            "total_rows": 2000
+          },
+          "maximum": 2026,
+          "minimum": 2019
+        },
+        "product_id": {
+          "distinct_count": 50,
+          "histogram": {
+            "buckets": [
+              {
+                "distinct_count": 6,
+                "lower": 1,
+                "row_count": 200,
+                "upper": 6
+              },
+              {
+                "distinct_count": 6,
+                "lower": 6,
+                "row_count": 200,
+                "upper": 11
+              },
+              {
+                "distinct_count": 5,
+                "lower": 11,
+                "row_count": 200,
+                "upper": 15
+              },
+              {
+                "distinct_count": 7,
+                "lower": 15,
+                "row_count": 200,
+                "upper": 21
+              },
+              {
+                "distinct_count": 6,
+                "lower": 21,
+                "row_count": 200,
+                "upper": 26
+              },
+              {
+                "distinct_count": 6,
+                "lower": 26,
+                "row_count": 200,
+                "upper": 31
+              },
+              {
+                "distinct_count": 6,
+                "lower": 31,
+                "row_count": 200,
+                "upper": 36
+              },
+              {
+                "distinct_count": 6,
+                "lower": 36,
+                "row_count": 200,
+                "upper": 41
+              },
+              {
+                "distinct_count": 5,
+                "lower": 41,
+                "row_count": 200,
+                "upper": 45
+              },
+              {
+                "distinct_count": 6,
+                "lower": 45,
+                "row_count": 200,
+                "upper": 50
+              }
+            ],
+            "total_rows": 2000
+          },
+          "maximum": 50,
+          "minimum": 1
+        }
+      },
+      "indexes": {
+        "customer_id": {
+          "clustered": false,
+          "height": 2,
+          "name": "orders_customer_id_idx"
+        },
+        "product_id": {
+          "clustered": false,
+          "height": 2,
+          "name": "orders_product_id_idx"
+        }
+      },
+      "page_count": 20,
+      "row_count": 2000
+    },
+    "products": {
+      "columns": {
+        "category": {
+          "distinct_count": 5,
+          "histogram": {
+            "buckets": [
+              {
+                "distinct_count": 1,
+                "lower": "books",
+                "row_count": 5,
+                "upper": "books"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "books",
+                "row_count": 5,
+                "upper": "books"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "electronics",
+                "row_count": 5,
+                "upper": "electronics"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "electronics",
+                "row_count": 5,
+                "upper": "electronics"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "home",
+                "row_count": 5,
+                "upper": "home"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "home",
+                "row_count": 5,
+                "upper": "home"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "sports",
+                "row_count": 5,
+                "upper": "sports"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "sports",
+                "row_count": 5,
+                "upper": "sports"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "toys",
+                "row_count": 5,
+                "upper": "toys"
+              },
+              {
+                "distinct_count": 1,
+                "lower": "toys",
+                "row_count": 5,
+                "upper": "toys"
+              }
+            ],
+            "total_rows": 50
+          },
+          "maximum": "toys",
+          "minimum": "books"
+        },
+        "id": {
+          "distinct_count": 50,
+          "histogram": {
+            "buckets": [
+              {
+                "distinct_count": 5,
+                "lower": 1,
+                "row_count": 5,
+                "upper": 5
+              },
+              {
+                "distinct_count": 5,
+                "lower": 6,
+                "row_count": 5,
+                "upper": 10
+              },
+              {
+                "distinct_count": 5,
+                "lower": 11,
+                "row_count": 5,
+                "upper": 15
+              },
+              {
+                "distinct_count": 5,
+                "lower": 16,
+                "row_count": 5,
+                "upper": 20
+              },
+              {
+                "distinct_count": 5,
+                "lower": 21,
+                "row_count": 5,
+                "upper": 25
+              },
+              {
+                "distinct_count": 5,
+                "lower": 26,
+                "row_count": 5,
+                "upper": 30
+              },
+              {
+                "distinct_count": 5,
+                "lower": 31,
+                "row_count": 5,
+                "upper": 35
+              },
+              {
+                "distinct_count": 5,
+                "lower": 36,
+                "row_count": 5,
+                "upper": 40
+              },
+              {
+                "distinct_count": 5,
+                "lower": 41,
+                "row_count": 5,
+                "upper": 45
+              },
+              {
+                "distinct_count": 5,
+                "lower": 46,
+                "row_count": 5,
+                "upper": 50
+              }
+            ],
+            "total_rows": 50
+          },
+          "maximum": 50,
+          "minimum": 1
+        },
+        "price": {
+          "distinct_count": 50,
+          "histogram": {
+            "buckets": [
+              {
+                "distinct_count": 5,
+                "lower": 55.34,
+                "row_count": 5,
+                "upper": 159.02
+              },
+              {
+                "distinct_count": 5,
+                "lower": 170.48,
+                "row_count": 5,
+                "upper": 253.56
+              },
+              {
+                "distinct_count": 5,
+                "lower": 268.88,
+                "row_count": 5,
+                "upper": 382.08
+              },
+              {
+                "distinct_count": 5,
+                "lower": 404.04,
+                "row_count": 5,
+                "upper": 426.46
+              },
+              {
+                "distinct_count": 5,
+                "lower": 445.92,
+                "row_count": 5,
+                "upper": 488.21
+              },
+              {
+                "distinct_count": 5,
+                "lower": 505.34,
+                "row_count": 5,
+                "upper": 581.28
+              },
+              {
+                "distinct_count": 5,
+                "lower": 586.26,
+                "row_count": 5,
+                "upper": 749.24
+              },
+              {
+                "distinct_count": 5,
+                "lower": 785.15,
+                "row_count": 5,
+                "upper": 862.04
+              },
+              {
+                "distinct_count": 5,
+                "lower": 862.36,
+                "row_count": 5,
+                "upper": 968.87
+              },
+              {
+                "distinct_count": 5,
+                "lower": 969.15,
+                "row_count": 5,
+                "upper": 999.29
+              }
+            ],
+            "total_rows": 50
+          },
+          "maximum": 999.29,
+          "minimum": 55.34
+        }
+      },
+      "indexes": {
+        "category": {
+          "clustered": false,
+          "height": 1,
+          "name": "products_category_idx"
+        },
+        "id": {
+          "clustered": true,
+          "height": 1,
+          "name": "products_id_idx"
+        }
+      },
+      "page_count": 1,
+      "row_count": 50
+    }
+  }
+}

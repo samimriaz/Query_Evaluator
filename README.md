@@ -281,6 +281,24 @@ The complete measured list appears in
 python -m querylab.cli evaluate
 ```
 
+Save the analyzed catalog used by an evaluation:
+
+```powershell
+python -m querylab.cli evaluate `
+  --save-catalog catalog_snapshots\default.json
+```
+
+Load the same statistics in a later run:
+
+```powershell
+python -m querylab.cli evaluate `
+  --load-catalog catalog_snapshots\default.json
+```
+
+A loaded snapshot is frozen. The optimizer continues to use its stored values
+even if the generated table data changes, which enables repeatable
+stale-statistics experiments.
+
 ### Custom query
 
 ```powershell
@@ -373,6 +391,76 @@ GROUP BY c.region;
 
 In plain language, this query finds gold customers, joins them to their orders,
 and returns total order amount by customer region.
+
+#### Catalog statistics used for this decision
+
+The complete analyzed catalog is stored in
+[`catalog_snapshots/default.json`](./catalog_snapshots/default.json). It records
+table cardinalities, page counts, column statistics, all histogram buckets, and
+index metadata.
+
+The optimizer uses these stored table statistics for the main query:
+
+| Table | Catalog rows | Catalog pages | Relevant indexes |
+|---|---:|---:|---|
+| `customers` | 100 | 1 | `id` clustered, height 1; `tier` unclustered, height 1 |
+| `orders` | 2,000 | 20 | `customer_id` unclustered, height 2 |
+| `products` | 50 | 1 | Not used by this query |
+
+The relevant column statistics are:
+
+| Column | Distinct values | Minimum | Maximum | Why it is used |
+|---|---:|---:|---:|---|
+| `customers.tier` | 3 | `bronze` | `silver` | Estimate `tier = 'gold'` |
+| `customers.id` | 100 | 1 | 100 | Estimate join cardinality |
+| `orders.customer_id` | 100 | 1 | 100 | Estimate join cardinality |
+
+The full JSON contains ten equi-depth histogram buckets per populated column.
+The first `customers.tier` bucket whose range contains `gold` has:
+
+```json
+{
+  "lower": "bronze",
+  "upper": "gold",
+  "row_count": 10,
+  "distinct_count": 2
+}
+```
+
+From that bucket, the optimizer estimates:
+
+```text
+estimated matches in bucket = 10 rows / 2 distinct values = 5
+estimated gold selectivity  = 5 / 100 = 0.05
+estimated gold customers    = 100 × 0.05 = 5
+actual gold customers       = 25
+```
+
+It then estimates the equality join:
+
+```text
+estimated joined rows
+    = filtered customers × orders
+      / max(distinct customers.id, distinct orders.customer_id)
+
+    = 5 × 2,000 / max(100, 100)
+    = 100 rows
+```
+
+Finally, the catalog page counts produce the chosen hash plan's I/O estimate:
+
+```text
+customers sequential scan = 1 page
+orders sequential scan    = 20 pages
+in-memory hash join       = 0 additional pages
+aggregate                 = 0 additional pages
+------------------------------------------------
+estimated total           = 21 page I/O operations
+```
+
+The filtered customer input is estimated at one page, which fits within the 14
+frames available to the hash join (`16` total frames minus two reserved
+frames). That is why the estimator does not add partition I/O to this hash plan.
 
 #### Which plans were generated?
 
@@ -957,5 +1045,7 @@ querylab/
   cli.py         command-line interface
   database.py    tables and indexes owned by one database
   experiments.py repeatable layout and filtering experiments
+catalog_snapshots/
+  default.json   saved statistics for the main README evaluation
 tests/
 ```

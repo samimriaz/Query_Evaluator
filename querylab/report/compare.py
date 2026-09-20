@@ -44,12 +44,17 @@ def evaluate_query(
     sql: str,
     buffer_frames: int = 16,
     execute_all: bool = True,
+    catalog: Catalog | None = None,
 ) -> QueryReport:
     """Optimize, execute, verify, and compare a SQL query."""
 
     query = parse_sql(sql)
-    catalog = Catalog(database)
-    catalog.analyze()
+    if catalog is None:
+        catalog = Catalog(database)
+        catalog.analyze()
+    elif catalog.database is not database:
+        raise ValueError("catalog belongs to a different database")
+
     plans = PlanGenerator(database, catalog, buffer_frames).generate(query)
 
     if not plans:
@@ -86,4 +91,3 @@ def evaluate_query(
         regret = (chosen.evaluation.actual_io - best_io) / best_io
 
     return QueryReport(sql, candidates, chosen, actual_best, regret)
-

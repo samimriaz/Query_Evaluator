@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
+from querylab.catalog.catalog import Catalog
 from querylab.datagen.generate import DataConfig, generate_database
 from querylab.experiments import render_experiments, run_layout_experiment
 from querylab.report.compare import evaluate_query
@@ -43,6 +45,16 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Execute only the optimizer's chosen plan.",
     )
+    evaluate_parser.add_argument(
+        "--save-catalog",
+        type=Path,
+        help="Write analyzed catalog statistics to a JSON file.",
+    )
+    evaluate_parser.add_argument(
+        "--load-catalog",
+        type=Path,
+        help="Use a saved JSON catalog instead of analyzing current data.",
+    )
     _add_data_arguments(evaluate_parser)
 
     experiment_parser = subparsers.add_parser(
@@ -70,11 +82,21 @@ def main(arguments: list[str] | None = None) -> int:
 
     if options.command == "evaluate":
         database = generate_database(_data_config(options))
+        if options.load_catalog:
+            catalog = Catalog.load(database, options.load_catalog)
+        else:
+            catalog = Catalog(database)
+            catalog.analyze()
+
+        if options.save_catalog:
+            catalog.save(options.save_catalog)
+
         report = evaluate_query(
             database,
             options.sql,
             options.buffer_frames,
             execute_all=not options.chosen_only,
+            catalog=catalog,
         )
         print(render_report(report))
         return 0
