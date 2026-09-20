@@ -68,25 +68,35 @@ tie for the lowest actual I/O.
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    SQL[SQL text] --> Parser[SQL parser]
-    Parser --> Logical[Logical query<br/>tables, predicates, joins, aggregates]
-
-    Logical --> Generator[Plan generator]
-    Catalog[Catalog manager<br/>rows, pages, distinct values,<br/>min/max, histograms, indexes]
-    Catalog --> Estimator[Selectivity and I/O estimator]
-    Generator --> Estimator
-    Estimator --> Candidates[Ranked physical plans]
-
-    Candidates --> Evaluator[Plan evaluator]
-    Database[Generated database<br/>customers, orders, products] --> Storage[Paged table and index storage]
-    Storage --> Buffer[LRU buffer pool]
-    Buffer --> Evaluator
-
-    Evaluator --> Metrics[Actual rows, misses, writes,<br/>comparisons, hashes]
-    Candidates --> Report[Comparison and regret report]
-    Metrics --> Report
+```text
+┌─────────────┐
+│  SQL Query  │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│ SQL Parser  │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────────┐       ┌─────────────────┐
+│ Query Optimizer │◄──────│ Catalog + Stats │
+└────────┬────────┘       └─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Candidate Plans │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐       ┌─────────────────┐
+│ Plan Evaluator  │◄──────│ Pages + Buffer  │
+└────────┬────────┘       └─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Results + Regret│
+└─────────────────┘
 ```
 
 ### Query processing flow
