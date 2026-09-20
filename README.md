@@ -631,29 +631,57 @@ execution.
 
 #### All plans checked and compared
 
-The table is ranked by actual I/O. `Left input` and `Right input` show the exact
-child order in the physical join.
+The table starts with the worst measured plan and moves toward the best.
+`Left input` and `Right input` show the exact child order in the physical join.
 
-| Actual rank | Left input | Right input | Join algorithm | Estimated I/O | Actual I/O |
-|---:|---|---|---|---:|---:|
-| 1 | `SeqScan(c)` | `SeqScan(o)` | Hash | 21 | 21 |
-| 2 | `SeqScan(c)` | `SeqScan(o)` | Block nested loop | 21 | 21 |
-| 3 | `SeqScan(o)` | `SeqScan(c)` | Hash | 21 | 21 |
-| 4 | `SeqScan(o)` | `SeqScan(c)` | Block nested loop | 22 | 21 |
-| 5 | `SeqScan(o)` | `SeqScan(c)` | Tuple nested loop | 2,020 | 21 |
-| 6 | `IndexScan(c.tier)` | `SeqScan(o)` | Hash | 26 | 22 |
-| 7 | `IndexScan(c.tier)` | `SeqScan(o)` | Block nested loop | 26 | 22 |
-| 8 | `SeqScan(o)` | `IndexScan(c.tier)` | Hash | 26 | 22 |
-| 9 | `SeqScan(o)` | `IndexScan(c.tier)` | Block nested loop | 27 | 22 |
-| 10 | `SeqScan(o)` | `IndexScan(c.tier)` | Tuple nested loop | 2,025 | 22 |
-| 11 | `SeqScan(c)` | `SeqScan(o)` | Sort-merge | 101 | 81 |
-| 12 | `SeqScan(o)` | `SeqScan(c)` | Sort-merge | 101 | 81 |
-| 13 | `IndexScan(c.tier)` | `SeqScan(o)` | Sort-merge | 106 | 82 |
-| 14 | `SeqScan(o)` | `IndexScan(c.tier)` | Sort-merge | 106 | 82 |
-| 15 | `SeqScan(c)` | `SeqScan(o)` | Tuple nested loop | 101 | 501 |
-| 16 | `IndexScan(c.tier)` | `SeqScan(o)` | Tuple nested loop | 106 | 502 |
+The optimizer does not know actual I/O when it chooses a plan. It selects the
+candidate with the **lowest estimated I/O**. Three plans tie at an estimate of
+21:
 
-**Result:** regret was **0.0%**.
+1. hash join with `customers` on the left;
+2. block nested-loop join with `customers` on the left; and
+3. hash join with `orders` on the left.
+
+QueryLab uses a stable plan ID to break equal estimated costs. It therefore
+chooses:
+
+```text
+Aggregate(
+  HashJoin(
+    SeqScan(customers with gold filter),
+    SeqScan(orders)
+  )
+)
+```
+
+| Worst → best | Left input | Right input | Join algorithm | Estimated I/O | Actual I/O | Optimizer selected |
+|---:|---|---|---|---:|---:|---|
+| 1 | `IndexScan(c.tier)` | `SeqScan(o)` | Tuple nested loop | 106 | 502 | |
+| 2 | `SeqScan(c)` | `SeqScan(o)` | Tuple nested loop | 101 | 501 | |
+| 3 | `IndexScan(c.tier)` | `SeqScan(o)` | Sort-merge | 106 | 82 | |
+| 4 | `SeqScan(o)` | `IndexScan(c.tier)` | Sort-merge | 106 | 82 | |
+| 5 | `SeqScan(c)` | `SeqScan(o)` | Sort-merge | 101 | 81 | |
+| 6 | `SeqScan(o)` | `SeqScan(c)` | Sort-merge | 101 | 81 | |
+| 7 | `SeqScan(o)` | `IndexScan(c.tier)` | Tuple nested loop | 2,025 | 22 | |
+| 8 | `SeqScan(o)` | `IndexScan(c.tier)` | Block nested loop | 27 | 22 | |
+| 9 | `SeqScan(o)` | `IndexScan(c.tier)` | Hash | 26 | 22 | |
+| 10 | `IndexScan(c.tier)` | `SeqScan(o)` | Block nested loop | 26 | 22 | |
+| 11 | `IndexScan(c.tier)` | `SeqScan(o)` | Hash | 26 | 22 | |
+| 12 | `SeqScan(o)` | `SeqScan(c)` | Tuple nested loop | 2,020 | **21** | |
+| 13 | `SeqScan(o)` | `SeqScan(c)` | Block nested loop | 22 | **21** | |
+| 14 | `SeqScan(o)` | `SeqScan(c)` | Hash | 21 | **21** | |
+| 15 | `SeqScan(c)` | `SeqScan(o)` | Block nested loop | 21 | **21** | |
+| 16 | `SeqScan(c)` | `SeqScan(o)` | Hash | **21** | **21** | **Yes** |
+
+Rows 12 through 16 tie for the lowest actual I/O. The optimizer-selected hash
+plan is therefore one of five actual winners:
+
+```text
+chosen estimated I/O = 21
+chosen actual I/O    = 21
+best actual I/O      = 21
+regret               = (21 - 21) / 21 = 0.0%
+```
 
 The estimate expected only five gold customers, while execution found 25. The
 chosen hash join still tied for the lowest actual I/O, so this cardinality error
