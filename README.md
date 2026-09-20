@@ -418,6 +418,217 @@ Chosen-plan operators:
 | `HashJoin` | 100 | 527 | 21 | 0 additional |
 | `Aggregate` | 100 | 3 | 21 cumulative | 0 additional |
 
+#### Where is the filter applied?
+
+All current candidates use **filter pushdown**. The predicate
+`c.tier = 'gold'` is evaluated while `customers` is being scanned, before any
+join runs:
+
+```text
+┌──────────────────────────────────────────┐
+│ Scan customers and keep tier = "gold"   │  25 rows out
+└────────────────────┬─────────────────────┘
+                     │
+                     ▼
+              ┌─────────────┐
+              │ Join orders │
+              └─────────────┘
+```
+
+A separate join-first plan would look like this:
+
+```text
+┌─────────────────────────┐
+│ Join customers + orders │  all joined rows
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────┐
+│ Keep c.tier = "gold"    │
+└─────────────────────────┘
+```
+
+QueryLab does **not currently enumerate the second shape**. It always pushes a
+safe table predicate down to the scan. Therefore, the 16 measured candidates
+differ by access path, input order, and join algorithm—not by filter placement.
+
+For a sequential scan, applying the filter itself adds no page I/O. The scan
+must read the one customer page whether it keeps 25 rows or all 100 rows:
+
+```text
+Customer sequential scan + filter:
+estimated I/O = 1
+actual I/O    = 1
+```
+
+The filter still matters because only 25 rows, instead of 100, reach the join.
+That can greatly reduce repeated scans, hash-table size, sorting, and temporary
+I/O in later operators.
+
+Using the unclustered tier index changes the access cost:
+
+```text
+Customer tier index + filter:
+estimated I/O = 6
+actual I/O    = 2
+```
+
+The actual two operations are an index-page read and a customer-data-page read.
+The estimate assumes matching unclustered rows may require more scattered data
+page reads.
+
+#### Plan diagrams and join costs
+
+The diagrams below use the same query, rows, pages, and 16-frame buffer pool.
+The join cost shown is **additional I/O after its two inputs have been read**.
+
+##### Plan A: filter first, then hash join — chosen
+
+```text
+┌─────────────────────────────┐
+│ Aggregate by region         │  +0 actual I/O
+└──────────────┬──────────────┘
+               │
+┌──────────────▼──────────────┐
+│ Hash join on customer_id    │  +0 actual I/O
+└──────────┬───────────┬──────┘
+           │           │
+┌──────────▼──────┐  ┌─▼──────────────────┐
+│ Customers scan │  │ Orders scan         │
+│ + gold filter  │  │                     │
+│ 1 actual I/O   │  │ 20 actual I/O       │
+└─────────────────┘  └─────────────────────┘
+
+Total: 21 estimated I/O, 21 actual I/O
+```
+
+The filtered customer input fits in memory, so the hash join builds and probes
+its hash table without additional page reads or writes.
+
+##### Plan B: index filter, then hash join
+
+```text
+┌─────────────────────────────┐
+│ Aggregate by region         │  +0 actual I/O
+└──────────────┬──────────────┘
+               │
+┌──────────────▼──────────────┐
+│ Hash join on customer_id    │  +0 actual I/O
+└──────────┬───────────┬──────┘
+           │           │
+┌──────────▼──────┐  ┌─▼──────────────────┐
+│ Tier index scan│  │ Orders scan         │
+│ + gold filter  │  │                     │
+│ 2 actual I/O   │  │ 20 actual I/O       │
+└─────────────────┘  └─────────────────────┘
+
+Total: 26 estimated I/O, 22 actual I/O
+```
+
+This plan finds gold customers through the index. For this one-page customer
+table, the extra index traversal makes it one I/O more expensive than the
+sequential-scan hash plan.
+
+##### Plan C: filter first, then block nested-loop join
+
+```text
+┌─────────────────────────────┐
+│ Block nested-loop join      │  +0 actual I/O
+└──────────┬───────────┬──────┘
+           │           │
+┌──────────▼──────┐  ┌─▼──────────────────┐
+│ Customers scan │  │ Orders scan         │
+│ + gold filter  │  │                     │
+│ 1 actual I/O   │  │ 20 actual I/O       │
+└─────────────────┘  └─────────────────────┘
+
+Total: 21 estimated I/O, 21 actual I/O
+```
+
+All 25 filtered customer rows fit in one memory block, so `orders` is read only
+once. This plan ties the hash join on page I/O, although it performs more row
+comparisons.
+
+##### Plan D: filtered customers as the outer tuple loop
+
+```text
+┌─────────────────────────────┐
+│ Tuple nested-loop join      │  +480 actual I/O
+└──────────┬───────────┬──────┘
+           │           │
+┌──────────▼──────┐  ┌─▼──────────────────┐
+│ Customers scan │  │ Orders scan         │
+│ + gold filter  │  │ repeated per outer  │
+│ 1 actual I/O   │  │ 20 pages per pass   │
+└─────────────────┘  └─────────────────────┘
+
+Total: 101 estimated I/O, 501 actual I/O
+```
+
+Execution found 25 gold customers. The first orders scan costs 20 I/O and is
+already included in the base input cost. The remaining 24 outer rows each cause
+another 20-page orders scan:
+
+```text
+additional join I/O = 24 × 20 = 480
+total actual I/O    = 1 + 20 + 480 = 501
+```
+
+##### Plan E: reverse the tuple nested-loop inputs
+
+```text
+┌─────────────────────────────┐
+│ Tuple nested-loop join      │  +0 actual I/O
+└──────────┬───────────┬──────┘
+           │           │
+┌──────────▼──────┐  ┌─▼──────────────────┐
+│ Orders scan    │  │ Customers scan      │
+│ outer input    │  │ + gold filter       │
+│ 20 actual I/O  │  │ 1 page, stays cached│
+└─────────────────┘  └─────────────────────┘
+
+Total: 2,020 estimated I/O, 21 actual I/O
+```
+
+The estimator assumes the customer page may be read once per order. In actual
+execution, that one page remains in the 16-frame buffer pool, so every repeated
+request is a hit. This is why reversing the inputs changes the result so much.
+
+##### Plan F: filter first, then sort-merge join
+
+```text
+┌─────────────────────────────┐
+│ Sort-merge join             │  +60 actual I/O
+└──────────┬───────────┬──────┘
+           │           │
+┌──────────▼──────┐  ┌─▼──────────────────┐
+│ Sort filtered  │  │ Sort orders by      │
+│ customers by id│  │ customer_id         │
+└─────────────────┘  └─────────────────────┘
+
+Base scans:          21 actual I/O
+Temporary sort I/O:  60 actual I/O
+Total:               81 actual I/O
+```
+
+The filtered customers fit in memory, but the 2,000 order rows require external
+sorting. Run generation and merge passes write and reread temporary pages,
+making this plan more expensive than the in-memory hash join.
+
+##### Cost comparison by stage
+
+| Plan | Customer access and filter | Orders scan | Additional join/sort I/O | Estimated total | Actual total |
+|---|---:|---:|---:|---:|---:|
+| Sequential scan + hash | 1 / 1 | 20 / 20 | 0 / 0 | 21 | 21 |
+| Tier index + hash | 6 / 2 | 20 / 20 | 0 / 0 | 26 | 22 |
+| Sequential scan + block nested loop | 1 / 1 | 20 / 20 | 0 / 0 | 21 | 21 |
+| Sequential scan + tuple nested loop | 1 / 1 | 20 / 20 | 80 / 480 | 101 | 501 |
+| Reversed tuple nested loop | 1 / 1 | 20 / 20 | 1,999 / 0 | 2,020 | 21 |
+| Sequential scan + sort-merge | 1 / 1 | 20 / 20 | 80 / 60 | 101 | 81 |
+
+Values written as `estimated / actual` show where the estimator differed from
+execution.
+
 #### All plans checked and compared
 
 The table is ranked by actual I/O. `Left input` and `Right input` show the exact
