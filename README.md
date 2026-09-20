@@ -179,54 +179,6 @@ comments over compact or clever Python.
 - Frozen statistics for stale-statistics experiments
 - Estimated-I/O ranking with stable tie-breaking
 
-## Supported SQL
-
-The initial parser supports:
-
-- `SELECT`
-- column projection
-- `COUNT`, `SUM`, and `AVG`
-- `FROM`
-- table aliases
-- inner equi-joins
-- up to three tables
-- `WHERE` comparisons using `=`, `<`, `<=`, `>`, and `>=`
-- predicates joined by `AND`
-- `GROUP BY`
-
-The following features are intentionally deferred:
-
-- subqueries
-- outer joins
-- `NULL`
-- `DISTINCT`
-- window functions
-- updates and deletes
-
-## Project structure
-
-```text
-querylab/
-  catalog/       table, column, and histogram statistics
-  datagen/       deterministic demonstration data
-  executor/      scans, joins, sorting, aggregation, and metrics
-  optimizer/     selectivity, cost estimation, and plan generation
-  parser/        supported SQL parser
-  report/        candidate comparison, correctness, and regret
-  storage/       pages, tables, indexes, and LRU buffer pool
-  cli.py         command-line interface
-  database.py    tables and indexes owned by one database
-  experiments.py repeatable layout and filtering experiments
-tests/
-```
-
-## Requirements
-
-- Python 3.11 or newer
-- No runtime third-party packages
-
-The current implementation was validated with Python 3.12.10.
-
 ## Running QueryLab
 
 ### Default exhaustive evaluation
@@ -477,3 +429,51 @@ The candidate table compares complete-plan totals.
 
 These limitations keep the optimizer and physical algorithms visible enough to
 study without turning QueryLab into a full production database engine.
+
+## Supported SQL
+
+The initial parser supports:
+
+- `SELECT`
+- column projection
+- `COUNT`, `SUM`, and `AVG`
+- `FROM`
+- table aliases
+- inner equi-joins
+- up to three tables
+- `WHERE` comparisons using `=`, `<`, `<=`, `>`, and `>=`
+- predicates joined by `AND`
+- `GROUP BY`
+
+The following features are intentionally deferred:
+
+- subqueries
+- outer joins
+- `NULL`
+- `DISTINCT`
+- window functions
+- updates and deletes
+
+## Requirements
+
+- Python 3.11 or newer
+- No runtime third-party packages
+
+The current implementation was validated with Python 3.12.10.
+
+## Project structure
+
+```text
+querylab/
+  catalog/       table, column, and histogram statistics
+  datagen/       deterministic demonstration data
+  executor/      scans, joins, sorting, aggregation, and metrics
+  optimizer/     selectivity, cost estimation, and plan generation
+  parser/        supported SQL parser
+  report/        candidate comparison, correctness, and regret
+  storage/       pages, tables, indexes, and LRU buffer pool
+  cli.py         command-line interface
+  database.py    tables and indexes owned by one database
+  experiments.py repeatable layout and filtering experiments
+tests/
+```
