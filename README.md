@@ -224,7 +224,39 @@ python -m unittest discover -s tests -v
 The following results were generated with seed `42`. Page I/O is deterministic
 for these configurations.
 
+### How to read a query plan
+
+A physical plan is a tree that is read from the bottom up:
+
+```text
+Aggregate
+└── HashJoin
+    ├── SeqScan(customers)
+    └── SeqScan(orders)
+```
+
+The scan nodes read table rows first. Their output becomes the input to the join.
+The join's output then becomes the input to the aggregate.
+
+The plan names used below mean:
+
+- `SeqScan(c)`: read every page of `customers` using alias `c`;
+- `IndexScan(c.tier)`: use the index on `customers.tier`;
+- `HashJoin(left, right)`: join the two child results with a hash table;
+- `BlockNestedLoop(left, right)`: process the left input in memory-sized blocks
+  and rescan the right input;
+- `NestedLoop(left, right)`: use each left row as the outer row and scan the
+  right input;
+- `SortMerge(left, right)`: sort both inputs by the join key and merge them;
+- `Aggregate(child)`: group the child rows and compute the requested aggregate.
+
 ### Evaluation 1: default exhaustive two-table query
+
+Command:
+
+```powershell
+python -m querylab.cli evaluate
+```
 
 Configuration:
 
@@ -245,16 +277,43 @@ WHERE c.tier = 'gold'
 GROUP BY c.region;
 ```
 
-Chosen plan:
+In plain language, this query finds gold customers, joins them to their orders,
+and returns total order amount by customer region.
+
+#### Which plans were generated?
+
+The optimizer varies three physical choices:
+
+| Choice | Options |
+|---|---|
+| Access path for `customers` | `SeqScan(c)` or `IndexScan(c.tier)` |
+| Left and right join inputs | `(customers, orders)` or `(orders, customers)` |
+| Join algorithm | hash, block nested loop, tuple nested loop, or sort-merge |
+
+`orders` uses a sequential scan because this query has no indexed equality
+predicate on `orders`.
 
 ```text
-Aggregate(
-  HashJoin(
-    SeqScan(customers AS c),
-    SeqScan(orders AS o)
-  )
-)
+2 customer access paths
+× 2 left/right input orders
+× 4 join algorithms
+= 16 complete candidate plans
 ```
+
+Every candidate was executed with a fresh 16-frame buffer pool. QueryLab
+verified that all 16 plans returned the same result before comparing their I/O.
+
+#### Which plan was chosen?
+
+```text
+Aggregate: GROUP BY c.region, SUM(o.amount)
+└── HashJoin: c.id = o.customer_id
+    ├── SeqScan(customers AS c): apply c.tier = 'gold'
+    └── SeqScan(orders AS o)
+```
+
+The optimizer chose this plan because it had the lowest estimated total I/O:
+21 page operations.
 
 Chosen-plan operators:
 
@@ -265,26 +324,29 @@ Chosen-plan operators:
 | `HashJoin` | 100 | 527 | 21 | 0 additional |
 | `Aggregate` | 100 | 3 | 21 cumulative | 0 additional |
 
-Candidate ranking by actual I/O:
+#### All plans checked and compared
 
-| Rank | Plan | Estimated I/O | Actual I/O |
-|---:|---|---:|---:|
-| 1 | Hash join, customers then orders | 21 | 21 |
-| 2 | Block nested loop, customers then orders | 21 | 21 |
-| 3 | Hash join, orders then customers | 21 | 21 |
-| 4 | Block nested loop, orders then customers | 22 | 21 |
-| 5 | Nested loop, orders then customers | 2,020 | 21 |
-| 6 | Hash join with customer tier index | 26 | 22 |
-| 7 | Block nested loop with customer tier index | 26 | 22 |
-| 8 | Reverse hash join with customer tier index | 26 | 22 |
-| 9 | Reverse block nested loop with customer tier index | 27 | 22 |
-| 10 | Reverse nested loop with customer tier index | 2,025 | 22 |
-| 11 | Sort-merge, customers then orders | 101 | 81 |
-| 12 | Sort-merge, orders then customers | 101 | 81 |
-| 13 | Sort-merge with customer tier index | 106 | 82 |
-| 14 | Reverse sort-merge with customer tier index | 106 | 82 |
-| 15 | Nested loop, customers then orders | 101 | 501 |
-| 16 | Nested loop with customer tier index | 106 | 502 |
+The table is ranked by actual I/O. `Left input` and `Right input` show the exact
+child order in the physical join.
+
+| Actual rank | Left input | Right input | Join algorithm | Estimated I/O | Actual I/O |
+|---:|---|---|---|---:|---:|
+| 1 | `SeqScan(c)` | `SeqScan(o)` | Hash | 21 | 21 |
+| 2 | `SeqScan(c)` | `SeqScan(o)` | Block nested loop | 21 | 21 |
+| 3 | `SeqScan(o)` | `SeqScan(c)` | Hash | 21 | 21 |
+| 4 | `SeqScan(o)` | `SeqScan(c)` | Block nested loop | 22 | 21 |
+| 5 | `SeqScan(o)` | `SeqScan(c)` | Tuple nested loop | 2,020 | 21 |
+| 6 | `IndexScan(c.tier)` | `SeqScan(o)` | Hash | 26 | 22 |
+| 7 | `IndexScan(c.tier)` | `SeqScan(o)` | Block nested loop | 26 | 22 |
+| 8 | `SeqScan(o)` | `IndexScan(c.tier)` | Hash | 26 | 22 |
+| 9 | `SeqScan(o)` | `IndexScan(c.tier)` | Block nested loop | 27 | 22 |
+| 10 | `SeqScan(o)` | `IndexScan(c.tier)` | Tuple nested loop | 2,025 | 22 |
+| 11 | `SeqScan(c)` | `SeqScan(o)` | Sort-merge | 101 | 81 |
+| 12 | `SeqScan(o)` | `SeqScan(c)` | Sort-merge | 101 | 81 |
+| 13 | `IndexScan(c.tier)` | `SeqScan(o)` | Sort-merge | 106 | 82 |
+| 14 | `SeqScan(o)` | `IndexScan(c.tier)` | Sort-merge | 106 | 82 |
+| 15 | `SeqScan(c)` | `SeqScan(o)` | Tuple nested loop | 101 | 501 |
+| 16 | `IndexScan(c.tier)` | `SeqScan(o)` | Tuple nested loop | 106 | 502 |
 
 **Result:** regret was **0.0%**.
 
@@ -305,12 +367,44 @@ Command:
 python -m querylab.cli experiment
 ```
 
-| Evaluation | Customer pages | Order pages | Estimated I/O | Actual I/O | Regret |
-|---|---:|---:|---:|---:|---:|
-| Customers-wide, filtered | 50 | 100 | 106 | 123 | 0.0% |
-| Customers-wide, unfiltered | 50 | 100 | 150 | 150 | 0.0% |
-| Orders-wide, filtered | 10 | 200 | 206 | 211 | 0.5% |
-| Orders-wide, unfiltered | 10 | 200 | 210 | 210 | 0.0% |
+Each physical layout runs two queries.
+
+Filtered query:
+
+```sql
+SELECT c.region, SUM(o.amount)
+FROM customers c
+JOIN orders o ON c.id = o.customer_id
+WHERE c.tier = 'gold'
+GROUP BY c.region;
+```
+
+Unfiltered query:
+
+```sql
+SELECT c.region, SUM(o.amount)
+FROM customers c
+JOIN orders o ON c.id = o.customer_id
+GROUP BY c.region;
+```
+
+The filtered query compares all 16 plans described in Evaluation 1. Without the
+`tier` predicate, the unfiltered query has no customer index access path, so it
+compares:
+
+```text
+1 customer access path
+× 2 left/right input orders
+× 4 join algorithms
+= 8 complete candidate plans
+```
+
+| Evaluation | Candidates | Chosen plan | Actual best plan | Est. I/O | Act. I/O | Regret |
+|---|---:|---|---|---:|---:|---:|
+| Customers-wide, filtered | 16 | `Hash(IndexScan(c.tier), SeqScan(o))` | Same as chosen | 106 | 123 | 0.0% |
+| Customers-wide, unfiltered | 8 | `Hash(SeqScan(c), SeqScan(o))` | Same as chosen | 150 | 150 | 0.0% |
+| Orders-wide, filtered | 16 | `Hash(IndexScan(c.tier), SeqScan(o))` | `Hash(SeqScan(c), SeqScan(o))` | 206 | 211 | 0.5% |
+| Orders-wide, unfiltered | 8 | `Hash(SeqScan(c), SeqScan(o))` | Same as chosen | 210 | 210 | 0.0% |
 
 These evaluations keep row counts fixed while changing how rows are packed into
 pages.
@@ -325,6 +419,14 @@ Important observations:
   small estimation difference can alter the actual winner.
 
 ### Evaluation 3: single-table access-path choice
+
+Command:
+
+```powershell
+python -m querylab.cli evaluate `
+  "SELECT c.id FROM customers c WHERE c.tier = 'gold'" `
+  --customers 20 --orders 100 --products 10
+```
 
 Configuration:
 
@@ -356,6 +458,14 @@ the best access path.
 
 ### Evaluation 4: three-table query
 
+Command:
+
+```powershell
+python -m querylab.cli evaluate `
+  "SELECT c.region, SUM(o.amount) FROM customers c JOIN orders o ON c.id = o.customer_id JOIN products p ON o.product_id = p.id WHERE p.category = 'books' GROUP BY c.region" `
+  --customers 10 --orders 30 --products 5
+```
+
 Configuration:
 
 ```text
@@ -363,7 +473,7 @@ customers = 10 rows
 orders = 30 rows
 products = 5 rows
 buffer frames = 16
-chosen plan only
+all candidate plans executed
 ```
 
 Query:
@@ -377,18 +487,51 @@ WHERE p.category = 'books'
 GROUP BY c.region;
 ```
 
-Chosen plan:
+In plain language, this query selects products in the `books` category, joins
+them to orders and customers, and totals matching order amounts by customer
+region.
+
+#### Which three-table plans were generated?
+
+The join graph is:
 
 ```text
-Aggregate(
-  HashJoin(
-    HashJoin(
-      SeqScan(customers AS c),
-      SeqScan(orders AS o)
-    ),
-    SeqScan(products AS p)
-  )
-)
+customers ── customer_id ── orders ── product_id ── products
+```
+
+Only connected left-deep orders are valid:
+
+1. `customers → orders → products`
+2. `orders → customers → products`
+3. `orders → products → customers`
+4. `products → orders → customers`
+
+For each order, the optimizer tries:
+
+- sequential or category-index access for `products`;
+- one sequential access path for `customers`;
+- one sequential access path for `orders`; and
+- four algorithms for the first join and four for the second join.
+
+```text
+4 valid left-deep table orders
+× 2 product access paths
+× 4 first-join algorithms
+× 4 second-join algorithms
+= 128 complete candidate plans
+```
+
+All 128 candidates were executed and verified to return the same result.
+
+#### Chosen three-table plan
+
+```text
+Aggregate: GROUP BY c.region, SUM(o.amount)
+└── HashJoin: o.product_id = p.id
+    ├── HashJoin: c.id = o.customer_id
+    │   ├── SeqScan(customers AS c)
+    │   └── SeqScan(orders AS o)
+    └── SeqScan(products AS p): apply p.category = 'books'
 ```
 
 | Operator | Estimated rows | Actual rows | Estimated I/O | Actual I/O |
@@ -400,9 +543,15 @@ Aggregate(
 | Second `HashJoin` | 6 | 9 | 3 | 0 additional |
 | `Aggregate` | 6 | 4 | 3 cumulative | 0 additional |
 
-**Result:** the chosen plan used **3 actual page I/O operations**. Regret is
-reported as **0.0%** because this run intentionally executed only the chosen
-plan.
+Of the 128 plans:
+
+| Actual total I/O | Number of plans |
+|---:|---:|
+| 3 | 64 |
+| 4 | 64 |
+
+**Result:** the chosen plan used **3 actual page I/O operations**, tied for the
+lowest actual cost, and produced **0.0% regret**.
 
 ## Interpreting the report
 
