@@ -161,6 +161,31 @@ different ways. QueryLab changes three independent parts of a plan:
 The optimizer combines these choices, estimates each combination, and selects
 the complete plan with the lowest estimated I/O.
 
+### Query used for the plan comparison
+
+The access paths and join plans in this section are generated for the following
+query:
+
+```sql
+SELECT c.region, SUM(o.amount)
+FROM customers c
+JOIN orders o ON c.id = o.customer_id
+WHERE c.tier = 'gold'
+GROUP BY c.region;
+```
+
+The query:
+
+1. filters `customers` to keep only gold-tier customers;
+2. joins those customers to `orders` using
+   `customers.id = orders.customer_id`;
+3. groups the joined rows by customer region; and
+4. calculates the total order amount for each region.
+
+The result is the same for every valid physical plan. What changes is how the
+tables are read, which join input is processed first, which join algorithm is
+used, and how much page I/O that work requires.
+
 ### 1. Access path
 
 | Access path | What it does | I/O tradeoff |
