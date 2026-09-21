@@ -19,14 +19,18 @@ def _merge_runs(
     merged: list[Row] = []
     heap: list[tuple[Scalar, int, int, Row]] = []
 
+    # Seed the heap with the first row from each run. The run and row numbers
+    # act as cursors and also provide deterministic tie-breaking.
     for run_number, run in enumerate(runs):
         if run:
             heapq.heappush(heap, (key(run[0]), run_number, 0, run[0]))
 
     while heap:
+        # The smallest available key is the next row in global sorted order.
         _, run_number, row_number, row = heapq.heappop(heap)
         merged.append(row)
 
+        # Replace that row with the next row from the same run.
         next_row_number = row_number + 1
         if next_row_number < len(runs[run_number]):
             next_row = runs[run_number][next_row_number]
@@ -50,6 +54,7 @@ def external_merge_sort(
 
     rows_per_run = max(1, buffer_frames * tuples_per_page)
     if len(rows) <= rows_per_run:
+        # No temporary pages are needed when the entire input fits in memory.
         return sorted(rows, key=key)
 
     runs: list[list[Row]] = []
@@ -73,6 +78,7 @@ def external_merge_sort(
         for group_number, start in enumerate(range(0, len(runs), fan_in)):
             group = runs[start : start + fan_in]
 
+            # Read every temporary input page participating in this merge.
             for run_number, run in enumerate(group):
                 page_count = ceil(len(run) / tuples_per_page)
                 for page_number in range(page_count):
@@ -85,6 +91,8 @@ def external_merge_sort(
             merged = _merge_runs(group, key)
             next_runs.append(merged)
 
+            # The merged run is written back unless it can be consumed after
+            # this pass. QueryLab counts the write to keep each pass explicit.
             output_pages = ceil(len(merged) / tuples_per_page)
             for _ in range(output_pages):
                 buffer_pool.write_temporary_page()
@@ -93,4 +101,3 @@ def external_merge_sort(
         merge_pass += 1
 
     return runs[0]
-
